@@ -41,6 +41,7 @@ API = None
 INSIGHTS_MAX_WAIT_TO_START_SECONDS = 2 * 60
 INSIGHTS_MAX_WAIT_TO_FINISH_SECONDS = 30 * 60
 INSIGHTS_MAX_ASYNC_SLEEP_SECONDS = 5 * 60
+GENERIC_API_WAIT_SECONDS = 10
 
 RESULT_RETURN_LIMIT = 100
 
@@ -200,6 +201,7 @@ def ad_creative_success(response, stream=None):
     schema = singer.resolve_schema_references(stream.catalog_entry.schema.to_dict(), refs)
 
     rec = response.json()
+    time.sleep(GENERIC_API_WAIT_SECONDS)
     record = Transformer(pre_hook=transform_date_hook).transform(rec, schema)
     singer.write_record(stream.name, record, stream.stream_alias, utils.now())
 
@@ -263,6 +265,7 @@ class Ads(IncrementalStream):
         This is necessary because the functions that call this endpoint return
         a generator, whose calls need decorated with a backoff.
         """
+        time.sleep(GENERIC_API_WAIT_SECONDS)
         return self.account.get_ads(fields=self.automatic_fields(), params=params) # pylint: disable=no-member
 
     def __iter__(self):
@@ -279,11 +282,13 @@ class Ads(IncrementalStream):
                 bookmark_params.append({'field': 'ad.' + UPDATED_TIME_KEY, 'operator': 'GREATER_THAN', 'value': self.current_bookmark.int_timestamp})
             for del_info_filt in iter_delivery_info_filter('ad'):
                 params.update({'filtering': [del_info_filt] + bookmark_params})
+                time.sleep(GENERIC_API_WAIT_SECONDS)
                 filt_ads = self._call_get_ads(params)
                 yield filt_ads
 
         @retry_pattern(backoff.expo, FacebookRequestError, max_tries=5, factor=5)
         def prepare_record(ad):
+            time.sleep(GENERIC_API_WAIT_SECONDS)
             return ad.api_get(fields=self.fields()).export_all_data()
 
         if CONFIG.get('include_deleted', 'false').lower() == 'true':
@@ -308,6 +313,7 @@ class AdSets(IncrementalStream):
         This is necessary because the functions that call this endpoint return
         a generator, whose calls need decorated with a backoff.
         """
+        time.sleep(GENERIC_API_WAIT_SECONDS)
         return self.account.get_ad_sets(fields=self.automatic_fields(), params=params) # pylint: disable=no-member
 
     def __iter__(self):
@@ -324,11 +330,13 @@ class AdSets(IncrementalStream):
                 bookmark_params.append({'field': 'adset.' + UPDATED_TIME_KEY, 'operator': 'GREATER_THAN', 'value': self.current_bookmark.int_timestamp})
             for del_info_filt in iter_delivery_info_filter('adset'):
                 params.update({'filtering': [del_info_filt] + bookmark_params})
+                time.sleep(GENERIC_API_WAIT_SECONDS)
                 filt_adsets = self._call_get_ad_sets(params)
                 yield filt_adsets
 
         @retry_pattern(backoff.expo, FacebookRequestError, max_tries=5, factor=5)
         def prepare_record(ad_set):
+            time.sleep(GENERIC_API_WAIT_SECONDS)
             return ad_set.api_get(fields=self.fields()).export_all_data()
 
         if CONFIG.get('include_deleted', 'false').lower() == 'true':
@@ -350,6 +358,7 @@ class Campaigns(IncrementalStream):
         This is necessary because the functions that call this endpoint return
         a generator, whose calls need decorated with a backoff.
         """
+        time.sleep(GENERIC_API_WAIT_SECONDS)
         return self.account.get_campaigns(fields=self.automatic_fields(), params=params) # pylint: disable=no-member
 
     def __iter__(self):
@@ -370,11 +379,13 @@ class Campaigns(IncrementalStream):
                 bookmark_params.append({'field': 'campaign.' + UPDATED_TIME_KEY, 'operator': 'GREATER_THAN', 'value': self.current_bookmark.int_timestamp})
             for del_info_filt in iter_delivery_info_filter('campaign'):
                 params.update({'filtering': [del_info_filt] + bookmark_params})
+                time.sleep(GENERIC_API_WAIT_SECONDS)
                 filt_campaigns = self._call_get_campaigns(params)
                 yield filt_campaigns
 
         @retry_pattern(backoff.expo, FacebookRequestError, max_tries=5, factor=5)
         def prepare_record(campaign):
+            time.sleep(GENERIC_API_WAIT_SECONDS)
             campaign_out = campaign.api_get(fields=fields).export_all_data()
             if pull_ads:
                 campaign_out['ads'] = {'data': []}
